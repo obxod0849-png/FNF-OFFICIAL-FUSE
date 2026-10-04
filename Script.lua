@@ -158,3 +158,4 @@ task.spawn(function()
 end)
 
 print("Funky Friday Hub успешно запущен!")
+
