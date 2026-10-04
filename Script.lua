@@ -14,7 +14,7 @@ end
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "FF_ProHubV18"
 screenGui.ResetOnSpawn = false
-screenGui.Parent = CoreGui
+screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
 -- ==================== ИНТЕРФЕЙС (UI) ====================
 local icon = Instance.new("TextButton")
