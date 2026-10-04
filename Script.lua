@@ -1,15 +1,17 @@
--- Pro Hub v9 (Final Fix): Интегрированный движок автоигры для Funky Friday
+-- Pro Hub v15 (Ultimate Multi-Bypass Engine)
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local player = Players.LocalPlayer
 
-if CoreGui:FindFirstChild("FF_ProHubV9") then
-    CoreGui.FF_ProHubV9:Destroy()
+if CoreGui:FindFirstChild("FF_ProHubV15") then
+    CoreGui.FF_ProHubV15:Destroy()
 end
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "FF_ProHubV9"
+screenGui.Name = "FF_ProHubV15"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = CoreGui
 
@@ -69,7 +71,7 @@ local titleText = Instance.new("TextLabel")
 titleText.Size = UDim2.new(1, -50, 1, 0)
 titleText.Position = UDim2.new(0, 15, 0, 0)
 titleText.BackgroundTransparency = 1
-titleText.Text = "Funky Friday | Pro Engine v9"
+titleText.Text = "Funky Friday | Pro Engine v15"
 titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleText.TextSize = 14
 titleText.Font = Enum.Font.GothamBold
@@ -125,7 +127,7 @@ icon.InputChanged:Connect(function(input)
     end
 end)
 
-game:GetService("UserInputService").InputChanged:Connect(function(input)
+UserInputService.InputChanged:Connect(function(input)
     if input == dragInput and dragging then
         local delta = input.Position - dragStart
         icon.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
@@ -276,40 +278,85 @@ unlBtn.Activated:Connect(function()
     screenGui:Destroy()
 end)
 
--- ==================== РАБОЧИЙ МЕХАНИЗМ АВТОИГРЫ ====================
+-- ==================== МУЛЬТИ-МЕТОДНЫЙ ДВИЖОК ОБХОДОВ ====================
 task.spawn(function()
+    -- Поиск доступных сетевых событий для Медота №3
+    local networkEvents = {}
+    pcall(function()
+        for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
+            if v:IsA("RemoteEvent") and (v.Name:lower():find("note") or v.Name:lower():find("hit") or v.Name:lower():find("game") or v.Name:lower():find("funk")) then
+                table.insert(networkEvents, v)
+            end
+        end
+    end)
+
     local keys = {Enum.KeyCode.D, Enum.KeyCode.F, Enum.KeyCode.J, Enum.KeyCode.K}
-    
+
     while true do
-        task.wait(0.003)
+        task.wait(0.01)
         if FF_Settings.AutoPlay then
             pcall(function()
-                local currentAcc = FF_Settings.Accuracy
+                -- Расчет точности с учетом режима "Только Bad"
+                local currentChance = FF_Settings.Accuracy
                 if FF_Settings.OnlyBad then
-                    currentAcc = math.clamp(currentAcc, 1, 20) -- Жестко режем точность для режима Bad
+                    currentChance = 15 -- Фиксируем жесткий шанс для Bad-хитов
                 end
-                
-                -- Ищем контейнер игрока во время танца в PlayerGui
-                local pg = player:FindFirstChild("PlayerGui")
-                if pg then
-                    for _, ui in ipairs(pg:GetDescendants()) do
-                        if ui:IsA("GuiObject") and ui.Visible then
-                            local nName = ui.Name:lower()
-                            -- Перехватываем спавнящиеся ноты в матче
-                            if nName:find("note") or nName:find("arrow") then
-                                if math.random(1, 100) <= currentAcc then
-                                    local keyToPress = keys[math.random(1, #keys)]
-                                    VirtualInputManager:SendKeyEvent(true, keyToPress, false, game)
-                                    task.wait(0.01)
-                                    VirtualInputManager:SendKeyEvent(false, keyToPress, false, game)
+
+                -- Проверка аккуратности (рандомайзер попаданий)
+                if math.random(1, 100) <= currentChance then
+                    local targetKey = keys[math.random(1, #keys)]
+
+                    -- МЕТОД №1: Эмуляция физического ввода через VirtualInputManager
+                    pcall(function()
+                        VirtualInputManager:SendKeyEvent(true, targetKey, false, game)
+                        task.wait(0.002)
+                        VirtualInputManager:SendKeyEvent(false, targetKey, false, game)
+                    end)
+
+                    -- МЕТОД №2: Мусорный коллектор памяти (getgc)
+                    pcall(function()
+                        if getgc then
+                            for _, obj in pairs(getgc(true)) do
+                                if type(obj) == "table" then
+                                    if rawget(obj, "songPosition") or rawget(obj, "Notes") or rawget(obj, "health") then
+                                        -- Принудительное изменение состояния внутри памяти
+                                        if rawget(obj, "accuracy") then obj.accuracy = currentChance end
+                                    end
                                 end
                             end
                         end
-                    end
+                    end)
+
+                    -- МЕТОД №3: Спам сетевых пакетов (RemoteEvent Hook)
+                    pcall(function()
+                        for _, ev in ipairs(networkEvents) do
+                            ev:FireServer("Hit", math.random(1, 4))
+                            ev:FireServer(targetKey)
+                        end
+                    end)
+
+                    -- МЕТОД №4: Поиск UI-элементов на экране и симуляция тачей
+                    pcall(function()
+                        local pg = player:FindFirstChild("PlayerGui")
+                        if pg then
+                            for _, gui in ipairs(pg:GetDescendants()) do
+                                if gui:IsA("GuiButton") and gui.AbsoluteSize.X > 0 then
+                                    local name = gui.Name:lower()
+                                    if name:find("arrow") or name:find("note") or name:find("btn") then
+                                        local pos = gui.AbsolutePosition
+                                        local size = gui.AbsoluteSize
+                                        VirtualInputManager:SendMouseButtonEvent(pos.X + size.X/2, pos.Y + size.Y/2, 0, true, game, 0)
+                                        task.wait(0.001)
+                                        VirtualInputManager:SendMouseButtonEvent(pos.X + size.X/2, pos.Y + size.Y/2, 0, false, game, 0)
+                                    end
+                                end
+                            end
+                        end
+                    end)
                 end
             end)
         end
     end
 end)
 
-print("Pro Hub v9 успешно инициализирован.")
+print("Pro Hub v15 (Multi-Bypass Engine) запущен успешно.")
