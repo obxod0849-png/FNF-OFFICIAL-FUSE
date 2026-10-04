@@ -1,29 +1,29 @@
--- Надежный мобильный Pro Hub для Funky Friday v3.0
+-- Надежный мобильный Pro Hub для Funky Friday v4.0
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- Удаляем старый гуи, если он был
-if playerGui:FindFirstChild("FF_ProHubV3") then
-    playerGui.FF_ProHubV3:Destroy()
+if playerGui:FindFirstChild("FF_ProHubV4") then
+    playerGui.FF_ProHubV4:Destroy()
 end
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "FF_ProHubV3"
+screenGui.Name = "FF_ProHubV4"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 
--- ==================== ПЛАВАЮЩАЯ ИКОНКА (СЕНСОРНОЕ ПЕРЕЩИСЛЕНИЕ) ====================
+-- ==================== ПЛАВАЮЩАЯ ИКОНКА ====================
 local icon = Instance.new("TextButton")
 icon.Name = "FloatingIcon"
 icon.Size = UDim2.new(0, 55, 0, 55)
-icon.Position = UDim2.new(0, 30, 0, 100) -- Гарантированно на видном месте слева
+icon.Position = UDim2.new(0, 30, 0, 100)
 icon.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 icon.Text = "FNF"
 icon.TextColor3 = Color3.fromRGB(0, 255, 170)
 icon.TextSize = 16
 icon.Font = Enum.Font.GothamBold
+icon.AutoButtonColor = false
 icon.Parent = screenGui
 
 local iconCorner = Instance.new("UICorner")
@@ -42,7 +42,7 @@ mainFrame.Size = UDim2.new(0, 300, 0, 360)
 mainFrame.Position = UDim2.new(0.5, -150, 0.5, -180)
 mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
 mainFrame.BorderSizePixel = 0
-mainFrame.Visible = false -- Скрыто до нажатия на иконку
+mainFrame.Visible = true -- Сделали видимым по умолчанию, чтобы сразу открывалось!
 mainFrame.Parent = screenGui
 
 local mainCorner = Instance.new("UICorner")
@@ -91,58 +91,17 @@ local closeCorner = Instance.new("UICorner")
 closeCorner.CornerRadius = UDim.new(0, 8)
 closeCorner.Parent = closeBtn
 
--- Логика переключения видимости меню по иконке
-local isOpen = false
-icon.MouseButton1Click:Connect(function()
+-- Используем Activated вместо MouseButton1Click — это решает проблему кликов на телефонах
+local isOpen = true
+icon.Activated:Connect(function()
     isOpen = not isOpen
     mainFrame.Visible = isOpen
 end)
 
-closeBtn.MouseButton1Click:Connect(function()
+closeBtn.Activated:Connect(function()
     isOpen = false
     mainFrame.Visible = false
 end)
-
--- ==================== НАДЕЖНОЕ ПЕРЕТАСКИВАНИЕ ПАЛЬЦЕМ (DRAG) ====================
-local function makeDraggable(guiObject)
-    local dragging, dragInput, dragStart, startPos
-    
-    guiObject.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = guiObject.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-    
-    guiObject.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            guiObject.Position = UDim2.new(
-                startPos.X.Scale, 
-                startPos.X.Offset + delta.X, 
-                startPos.Y.Scale, 
-                startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
-end
-
--- Применяем перетаскивание на иконку и на само окно
-makeDraggable(icon)
-makeDraggable(mainFrame)
 
 -- ==================== КНОПКИ И НАСТРОЙКИ ВНУТРИ МЕНЮ ====================
 local container = Instance.new("ScrollingFrame")
@@ -160,13 +119,14 @@ local FF_Settings = {
     OnlyBad = false
 }
 
--- Функция создания переключателей
+-- Функция создания переключателей через Activated
 local function createToggle(name, yPos, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, 0, 0, 45)
     btn.Position = UDim2.new(0, 0, 0, yPos)
     btn.BackgroundColor3 = Color3.fromRGB(25, 25, 38)
     btn.Text = ""
+    btn.AutoButtonColor = false
     btn.Parent = container
 
     local c = Instance.new("UICorner")
@@ -195,7 +155,7 @@ local function createToggle(name, yPos, callback)
     indC.Parent = ind
 
     local state = false
-    btn.MouseButton1Click:Connect(function()
+    btn.Activated:Connect(function()
         state = not state
         if state then
             ind.BackgroundColor3 = Color3.fromRGB(0, 255, 120)
@@ -208,7 +168,6 @@ local function createToggle(name, yPos, callback)
     end)
 end
 
--- Переключатели
 createToggle("Режим 'Только Bad'", 0, function(state)
     FF_Settings.OnlyBad = state
 end)
@@ -223,6 +182,7 @@ accBtn.Size = UDim2.new(1, 0, 0, 45)
 accBtn.Position = UDim2.new(0, 0, 0, 104)
 accBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 38)
 accBtn.Text = ""
+accBtn.AutoButtonColor = false
 accBtn.Parent = container
 
 local accC = Instance.new("UICorner")
@@ -242,7 +202,7 @@ accLbl.Parent = accBtn
 
 local levels = {100, 75, 50, 25, 1}
 local idx = 1
-accBtn.MouseButton1Click:Connect(function()
+accBtn.Activated:Connect(function()
     idx = idx + 1
     if idx > #levels then idx = 1 end
     FF_Settings.Accuracy = levels[idx]
@@ -258,13 +218,14 @@ unlBtn.Text = "Закрыть / Выгрузить"
 unlBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
 unlBtn.TextSize = 13
 unlBtn.Font = Enum.Font.GothamBold
+unlBtn.AutoButtonColor = false
 unlBtn.Parent = container
 
 local unlC = Instance.new("UICorner")
 unlC.CornerRadius = UDim.new(0, 8)
 unlC.Parent = unlBtn
 
-unlBtn.MouseButton1Click:Connect(function()
+unlBtn.Activated:Connect(function()
     screenGui:Destroy()
 end)
 
@@ -284,4 +245,4 @@ task.spawn(function()
     end
 end)
 
-print("Pro Hub v3 загружен!")
+print("Pro Hub v4 загружен!")
