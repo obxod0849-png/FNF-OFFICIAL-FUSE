@@ -1,4 +1,4 @@
--- Pro Hub v15 (Ultimate Multi-Bypass Engine)
+-- Pro Hub v17 (Direct Hook & Node Interceptor Engine)
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -6,12 +6,12 @@ local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local player = Players.LocalPlayer
 
-if CoreGui:FindFirstChild("FF_ProHubV15") then
-    CoreGui.FF_ProHubV15:Destroy()
+if CoreGui:FindFirstChild("FF_ProHubV17") then
+    CoreGui.FF_ProHubV17:Destroy()
 end
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "FF_ProHubV15"
+screenGui.Name = "FF_ProHubV17"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = CoreGui
 
@@ -71,7 +71,7 @@ local titleText = Instance.new("TextLabel")
 titleText.Size = UDim2.new(1, -50, 1, 0)
 titleText.Position = UDim2.new(0, 15, 0, 0)
 titleText.BackgroundTransparency = 1
-titleText.Text = "Funky Friday | Pro Engine v15"
+titleText.Text = "Funky Friday | Pro Engine v17"
 titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleText.TextSize = 14
 titleText.Font = Enum.Font.GothamBold
@@ -278,85 +278,52 @@ unlBtn.Activated:Connect(function()
     screenGui:Destroy()
 end)
 
--- ==================== МУЛЬТИ-МЕТОДНЫЙ ДВИЖОК ОБХОДОВ ====================
+-- ==================== ИСПРАВЛЕННЫЙ ДВИЖОК V17 ====================
 task.spawn(function()
-    -- Поиск доступных сетевых событий для Медота №3
-    local networkEvents = {}
-    pcall(function()
-        for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
-            if v:IsA("RemoteEvent") and (v.Name:lower():find("note") or v.Name:lower():find("hit") or v.Name:lower():find("game") or v.Name:lower():find("funk")) then
-                table.insert(networkEvents, v)
-            end
-        end
-    end)
-
     local keys = {Enum.KeyCode.D, Enum.KeyCode.F, Enum.KeyCode.J, Enum.KeyCode.K}
 
     while true do
         task.wait(0.01)
         if FF_Settings.AutoPlay then
             pcall(function()
-                -- Расчет точности с учетом режима "Только Bad"
-                local currentChance = FF_Settings.Accuracy
-                if FF_Settings.OnlyBad then
-                    currentChance = 15 -- Фиксируем жесткий шанс для Bad-хитов
-                end
+                local pg = player:FindFirstChild("PlayerGui")
+                if not pg then return end
 
-                -- Проверка аккуратности (рандомайзер попаданий)
-                if math.random(1, 100) <= currentChance then
-                    local targetKey = keys[math.random(1, #keys)]
+                -- Прямой перебор интерфейса игры для поиска нот
+                for _, v in ipairs(pg:GetDescendants()) do
+                    if v:IsA("GuiObject") and v.Visible then
+                        local name = v.Name:lower()
+                        -- Если это нота или стрелка интерфейса ритм-игры
+                        if name:find("note") or name:find("arrow") or name:find("receptor") then
+                            
+                            -- Вычисляем шанс срабатывания на основе Accuracy
+                            if math.random(1, 100) <= FF_Settings.Accuracy then
+                                local keyIndex = math.random(1, 4)
+                                if name:find("left") then keyIndex = 1
+                                elseif name:find("down") then keyIndex = 2
+                                elseif name:find("up") then keyIndex = 3
+                                elseif name:find("right") then keyIndex = 4 end
 
-                    -- МЕТОД №1: Эмуляция физического ввода через VirtualInputManager
-                    pcall(function()
-                        VirtualInputManager:SendKeyEvent(true, targetKey, false, game)
-                        task.wait(0.002)
-                        VirtualInputManager:SendKeyEvent(false, targetKey, false, game)
-                    end)
-
-                    -- МЕТОД №2: Мусорный коллектор памяти (getgc)
-                    pcall(function()
-                        if getgc then
-                            for _, obj in pairs(getgc(true)) do
-                                if type(obj) == "table" then
-                                    if rawget(obj, "songPosition") or rawget(obj, "Notes") or rawget(obj, "health") then
-                                        -- Принудительное изменение состояния внутри памяти
-                                        if rawget(obj, "accuracy") then obj.accuracy = currentChance end
-                                    end
+                                local targetKey = keys[keyIndex]
+                                
+                                -- Режим "Только Bad": делаем искусственную задержку перед нажатием
+                                if FF_Settings.OnlyBad then
+                                    task.wait(0.09) -- Задержка смещает тайминг в категорию Bad/Meh
                                 end
+
+                                -- Симуляция нажатия через UserInputService / VirtualInputManager
+                                pcall(function()
+                                    VirtualInputManager:SendKeyEvent(true, targetKey, false, game)
+                                    task.wait(0.01)
+                                    VirtualInputManager:SendKeyEvent(false, targetKey, false, game)
+                                end)
                             end
                         end
-                    end)
-
-                    -- МЕТОД №3: Спам сетевых пакетов (RemoteEvent Hook)
-                    pcall(function()
-                        for _, ev in ipairs(networkEvents) do
-                            ev:FireServer("Hit", math.random(1, 4))
-                            ev:FireServer(targetKey)
-                        end
-                    end)
-
-                    -- МЕТОД №4: Поиск UI-элементов на экране и симуляция тачей
-                    pcall(function()
-                        local pg = player:FindFirstChild("PlayerGui")
-                        if pg then
-                            for _, gui in ipairs(pg:GetDescendants()) do
-                                if gui:IsA("GuiButton") and gui.AbsoluteSize.X > 0 then
-                                    local name = gui.Name:lower()
-                                    if name:find("arrow") or name:find("note") or name:find("btn") then
-                                        local pos = gui.AbsolutePosition
-                                        local size = gui.AbsoluteSize
-                                        VirtualInputManager:SendMouseButtonEvent(pos.X + size.X/2, pos.Y + size.Y/2, 0, true, game, 0)
-                                        task.wait(0.001)
-                                        VirtualInputManager:SendMouseButtonEvent(pos.X + size.X/2, pos.Y + size.Y/2, 0, false, game, 0)
-                                    end
-                                end
-                            end
-                        end
-                    end)
+                    end
                 end
             end)
         end
     end
 end)
 
-print("Pro Hub v15 (Multi-Bypass Engine) запущен успешно.")
+print("Pro Hub v17 запущен и готов к работе.")
