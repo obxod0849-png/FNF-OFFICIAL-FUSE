@@ -1,22 +1,20 @@
--- Pro Hub v6 для Funky Friday: Полная логика Auto-Play, Bad и ручной ввод Accuracy
+-- Pro Hub v9 (Final Fix): Интегрированный движок автоигры для Funky Friday
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local player = Players.LocalPlayer
 
--- Удаляем старый интерфейс
-if CoreGui:FindFirstChild("FF_ProHubV6") then
-    CoreGui.FF_ProHubV6:Destroy()
+if CoreGui:FindFirstChild("FF_ProHubV9") then
+    CoreGui.FF_ProHubV9:Destroy()
 end
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "FF_ProHubV6"
+screenGui.Name = "FF_ProHubV9"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = CoreGui
 
 -- ==================== ПЛАВАЮЩАЯ ИКОНКА ====================
 local icon = Instance.new("TextButton")
-icon.Name = "FloatingIcon"
 icon.Size = UDim2.new(0, 60, 0, 60)
 icon.Position = UDim2.new(0, 40, 0, 150)
 icon.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
@@ -38,7 +36,6 @@ iconStroke.Parent = icon
 
 -- ==================== ГЛАВНОЕ ОКНО МЕНЮ ====================
 local mainFrame = Instance.new("Frame")
-mainFrame.Name = "MainWindow"
 mainFrame.Size = UDim2.new(0, 310, 0, 390)
 mainFrame.Position = UDim2.new(0.5, -155, 0.5, -195)
 mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
@@ -72,7 +69,7 @@ local titleText = Instance.new("TextLabel")
 titleText.Size = UDim2.new(1, -50, 1, 0)
 titleText.Position = UDim2.new(0, 15, 0, 0)
 titleText.BackgroundTransparency = 1
-titleText.Text = "Funky Friday | Bot Hub"
+titleText.Text = "Funky Friday | Pro Engine v9"
 titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleText.TextSize = 14
 titleText.Font = Enum.Font.GothamBold
@@ -80,7 +77,7 @@ titleText.TextXAlignment = Enum.TextXAlignment.Left
 titleText.ZIndex = 1002
 titleText.Parent = topBar
 
--- Кнопка закрытия (крестик)
+-- Кнопка закрытия
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 30, 0, 30)
 closeBtn.Position = UDim2.new(1, -38, 0.5, -15)
@@ -96,7 +93,6 @@ local closeCorner = Instance.new("UICorner")
 closeCorner.CornerRadius = UDim.new(0, 8)
 closeCorner.Parent = closeBtn
 
--- Переключение видимости
 local isOpen = true
 icon.Activated:Connect(function()
     isOpen = not isOpen
@@ -147,14 +143,12 @@ container.ScrollBarThickness = 3
 container.ZIndex = 1001
 container.Parent = mainFrame
 
--- Таблица настроек бота
 local FF_Settings = {
     AutoPlay = false,
-    Accuracy = 100,      -- От 1 до 100%
-    OnlyBad = false      -- Режим «Только Bad»
+    Accuracy = 100,
+    OnlyBad = false
 }
 
--- Функция создания переключателей
 local function createToggle(name, yPos, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, 0, 0, 45)
@@ -213,7 +207,7 @@ createToggle("Auto-Play (Автоигра)", 52, function(state)
     FF_Settings.AutoPlay = state
 end)
 
--- ==================== ПОЛЕ ВВОДА ТОЧНОСТИ (ACCURACY) ====================
+-- Поле ввода Accuracy
 local accContainer = Instance.new("Frame")
 accContainer.Size = UDim2.new(1, 0, 0, 45)
 accContainer.Position = UDim2.new(0, 0, 0, 104)
@@ -282,28 +276,33 @@ unlBtn.Activated:Connect(function()
     screenGui:Destroy()
 end)
 
--- ==================== ОСНОВНОЙ РАБОЧИЙ ЦИКЛ АВТОИГРЫ ====================
+-- ==================== РАБОЧИЙ МЕХАНИЗМ АВТОИГРЫ ====================
 task.spawn(function()
+    local keys = {Enum.KeyCode.D, Enum.KeyCode.F, Enum.KeyCode.J, Enum.KeyCode.K}
+    
     while true do
-        task.wait(0.01)
+        task.wait(0.003)
         if FF_Settings.AutoPlay then
             pcall(function()
-                local targetAccuracy = FF_Settings.Accuracy
-                
-                -- Если включен режим «Только Bad», жестко занижаем тайминг/аккуратность под плохие оценки
+                local currentAcc = FF_Settings.Accuracy
                 if FF_Settings.OnlyBad then
-                    targetAccuracy = math.clamp(targetAccuracy, 1, 25)
+                    currentAcc = math.clamp(currentAcc, 1, 20) -- Жестко режем точность для режима Bad
                 end
                 
-                local playerGui = player:FindFirstChild("PlayerGui")
-                if playerGui then
-                    -- Поиск игровых нот в Funky Friday для симуляции попаданий
-                    for _, v in ipairs(playerGui:GetDescendants()) do
-                        if v:IsA("GuiObject") and (v.Name:lower():find("note") or v.Name:lower():find("arrow")) then
-                            -- Проверка рандома по введенной точности
-                            if math.random(1, 100) <= targetAccuracy then
-                                -- Эмуляция нажатия стрелок через виртуальный ввод
-                                -- (Логика срабатывает прямо во время нот)
+                -- Ищем контейнер игрока во время танца в PlayerGui
+                local pg = player:FindFirstChild("PlayerGui")
+                if pg then
+                    for _, ui in ipairs(pg:GetDescendants()) do
+                        if ui:IsA("GuiObject") and ui.Visible then
+                            local nName = ui.Name:lower()
+                            -- Перехватываем спавнящиеся ноты в матче
+                            if nName:find("note") or nName:find("arrow") then
+                                if math.random(1, 100) <= currentAcc then
+                                    local keyToPress = keys[math.random(1, #keys)]
+                                    VirtualInputManager:SendKeyEvent(true, keyToPress, false, game)
+                                    task.wait(0.01)
+                                    VirtualInputManager:SendKeyEvent(false, keyToPress, false, game)
+                                end
                             end
                         end
                     end
@@ -313,4 +312,4 @@ task.spawn(function()
     end
 end)
 
-print("Pro Hub v6 успешно загружен с поддержкой ввода Accuracy!")
+print("Pro Hub v9 успешно инициализирован.")
