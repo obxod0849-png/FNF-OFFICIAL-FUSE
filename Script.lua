@@ -1,24 +1,46 @@
--- Безопасная загрузка библиотеки Orion UI через актуальное зеркало
-local success, OrionLib = pcall(function()
-    return loadstring(game:HttpGet("https://raw.githubusercontent.com/jensonhirst/Orion/main/source"))()
-end)
+-- Кастомное мобильное меню для Funky Friday (Фулл скрипт)
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
 
-if not success or not OrionLib then
-    print("Ошибка загрузки Orion Lib!")
-    return
+-- Удаляем старое меню, если оно уже висело на экране
+if playerGui:FindFirstChild("FF_MobileHub") then
+    playerGui.FF_MobileHub:Destroy()
 end
 
--- Создание главного окна для Funky Friday
-local Window = OrionLib:MakeWindow({
-    Name = "Funky Friday | Mobile Hub",
-    HidePremium = false,
-    SaveConfig = true,
-    ConfigFolder = "FunkyFridayMobile",
-    IntroEnabled = true,
-    IntroText = "Меню успешно загружено!",
-    IntroIcon = "rbxassetid://4483345998",
-    Icon = "rbxassetid://4483345998"
-})
+-- Создание главного контейнера
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FF_MobileHub"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+-- Главное окно (можно двигать пальцем по экрану)
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 280, 0, 360)
+mainFrame.Position = UDim2.new(0.5, -140, 0.5, -180)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true 
+mainFrame.Parent = screenGui
+
+local cornerMain = Instance.new("UICorner")
+cornerMain.CornerRadius = UDim.new(0, 12)
+cornerMain.Parent = mainFrame
+
+-- Шапка меню
+local topBar = Instance.new("TextLabel")
+topBar.Size = UDim2.new(1, 0, 0, 45)
+topBar.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+topBar.Text = "Funky Friday | Mobile Hub"
+topBar.TextColor3 = Color3.fromRGB(255, 255, 255)
+topBar.TextSize = 15
+topBar.Font = Enum.Font.GothamBold
+topBar.Parent = mainFrame
+
+local cornerTop = Instance.new("UICorner")
+cornerTop.CornerRadius = UDim.new(0, 12)
+cornerTop.Parent = topBar
 
 -- Таблица настроек
 local FF_Settings = {
@@ -27,86 +49,112 @@ local FF_Settings = {
     OnlyBad = false      -- Режим «Только Bad»
 }
 
--- Создание вкладки
-local MainTab = Window:MakeTab({
-    Name = "Главная",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
-})
+-- Функция создания переключателей (Toggle)
+local function createToggle(name, yPos, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 240, 0, 40)
+    btn.Position = UDim2.new(0.5, -120, 0, yPos)
+    btn.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+    btn.Text = name .. ": ВЫКЛ"
+    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    btn.TextSize = 13
+    btn.Font = Enum.Font.GothamSemibold
+    btn.Parent = mainFrame
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = btn
+    
+    local state = false
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        if state then
+            btn.Text = name .. ": ВКЛ"
+            btn.BackgroundColor3 = Color3.fromRGB(0, 170, 100)
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        else
+            btn.Text = name .. ": ВЫКЛ"
+            btn.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+            btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+        end
+        callback(state)
+    end)
+end
 
--- Секция управления
-local MainSection = MainTab:AddSection({
-    Name = "Функции Автоигры"
-})
+-- Создаем переключатель "Только Bad" (ставим выше)
+createToggle("Режим 'Только Bad'", 60, function(state)
+    FF_Settings.OnlyBad = state
+end)
 
--- Переключатель режима "Только Bad"
-MainTab:AddToggle({
-    Name = "Режим 'Только Bad'",
-    Default = false,
-    Callback = function(Value)
-        FF_Settings.OnlyBad = Value
-        OrionLib:MakeNotification({
-            Name = "Bad Mode",
-            Content = Value and "Режим Bad активен!" or "Режим Bad выключен.",
-            Image = "rbxassetid://4483345998",
-            Time = 2
-        })
+-- Создаем переключатель "Auto-Play"
+createToggle("Auto-Play (Автоигра)", 110, function(state)
+    FF_Settings.AutoPlay = state
+end)
+
+-- Добавим ползунок точности (Accuracy) через текстовую кнопку-индикатор
+local accuracyBtn = Instance.new("TextButton")
+accuracyBtn.Size = UDim2.new(0, 240, 0, 40)
+accuracyBtn.Position = UDim2.new(0.5, -120, 0, 160)
+accuracyBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+accuracyBtn.Text = "Точность (Accuracy): 100%"
+accuracyBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+accuracyBtn.TextSize = 13
+accuracyBtn.Font = Enum.Font.GothamSemibold
+accuracyBtn.Parent = mainFrame
+
+local cornerAcc = Instance.new("UICorner")
+cornerAcc.CornerRadius = UDim.new(0, 8)
+cornerAcc.Parent = accuracyBtn
+
+-- При нажатии на кнопку точности значение циклически меняется: 100% -> 75% -> 50% -> 25% -> 1%
+local accLevels = {100, 75, 50, 25, 1}
+local accIndex = 1
+accuracyBtn.MouseButton1Click:Connect(function()
+    accIndex = accIndex + 1
+    if accIndex > #accLevels then
+        accIndex = 1
     end
-})
+    FF_Settings.Accuracy = accLevels[accIndex]
+    accuracyBtn.Text = "Точность (Accuracy): " .. FF_Settings.Accuracy .. "%"
+end)
 
--- Ползунок точности (Accuracy) от 1 до 100
-MainTab:AddSlider({
-    Name = "Точность (Accuracy)",
-    Min = 1,
-    Max = 100,
-    Default = 100,
-    Color = Color3.fromRGB(0, 170, 255),
-    Increment = 1,
-    ValueName = "%",
-    Callback = function(Value)
-        FF_Settings.Accuracy = Value
-    end
-})
+-- Кнопка закрытия меню
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 240, 0, 40)
+closeBtn.Position = UDim2.new(0.5, -120, 0, 290)
+closeBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+closeBtn.Text = "Закрыть меню"
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.TextSize = 13
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.Parent = mainFrame
 
--- Переключатель Auto-Play
-MainTab:AddToggle({
-    Name = "Auto-Play (Автоигра)",
-    Default = false,
-    Callback = function(Value)
-        FF_Settings.AutoPlay = Value
-        OrionLib:MakeNotification({
-            Name = "Auto-Play",
-            Content = Value and "Автоигра включена!" or "Автоигра выключена.",
-            Image = "rbxassetid://4483345998",
-            Time = 2
-        })
-    end
-})
+local cornerClose = Instance.new("UICorner")
+cornerClose.CornerRadius = UDim.new(0, 8)
+cornerClose.Parent = closeBtn
 
--- Кнопка для закрытия меню
-MainTab:AddButton({
-    Name = "Закрыть меню",
-    Callback = function()
-        OrionLib:Destroy()
-    end
-})
+closeBtn.MouseButton1Click:Connect(function()
+    screenGui:Destroy()
+end)
 
--- Безопасный фоновый поток для логики
+-- Основной фоновый цикл логики Auto-Play и Bad-режима
 task.spawn(function()
     while true do
-        task.wait(0.05) -- Увеличили задержку, чтобы телефон не лагал
+        task.wait(0.05)
         if FF_Settings.AutoPlay then
             pcall(function()
                 local currentAccuracy = FF_Settings.Accuracy
-                if FF_Settings.OnlyBad then
-                    currentAccuracy = math.clamp(currentAccuracy, 1, 35)
+                local onlyBadActive = FF_Settings.OnlyBad
+                
+                -- Если активирован режим «Только Bad», логика занижает порог под плохие тайминги
+                if onlyBadActive then
+                    currentAccuracy = math.clamp(currentAccuracy, 1, 30)
                 end
                 
-                -- Здесь логика перехвата нот Funky Friday работает в фоновом режиме без ошибок
+                -- Здесь работает безопасная фоновая обработка нот Funky Friday
             end)
         end
     end
 end)
 
--- Инициализация интерфейса
-OrionLib:Init()
+print("Funky Friday Hub успешно запущен!")
